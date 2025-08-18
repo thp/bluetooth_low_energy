@@ -224,6 +224,22 @@ final class MyPeripheralManager extends PlatformPeripheralManager
   }
 
   @override
+  Future<bool> tryNotifyCharacteristic(
+    Central central,
+    GATTCharacteristic characteristic, {
+    required Uint8List value,
+  }) async {
+    logger.warning("Not yet implemented on windows");
+    return false;
+  }
+
+  @override
+  Future<bool> canSendNotifications() async {
+    logger.warning("Not yet implemented on windows");
+    return false;
+  }
+
+  @override
   void onStateChanged(MyBluetoothLowEnergyStateArgs stateArgs) async {
     logger.info('onStateChanged: $stateArgs');
     final state = stateArgs.toState();

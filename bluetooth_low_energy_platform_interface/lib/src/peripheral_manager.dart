@@ -243,6 +243,21 @@ abstract interface class PeripheralManager
     GATTCharacteristic characteristic, {
     required Uint8List value,
   });
+
+  /// Same as notifyCharacteristic(), but if the notification/indication cannot be
+  /// sent, return false. Use canSendNotifications() to check if we can send
+  /// notifications again.
+  Future<bool> tryNotifyCharacteristic(
+    Central central,
+    GATTCharacteristic characteristic, {
+    required Uint8List value,
+  });
+
+  /// If we can send notifications, return true. Otherwise, wait for a signal
+  /// from the underlying platform that we can again send notifications. If this
+  /// returns false, it might mean that the device is disconnected and one should
+  /// not retry sending notifications (e.g. used to break out of a writer loop).
+  Future<bool> canSendNotifications();
 }
 
 /// Platform-specific implementations should implement this class to support

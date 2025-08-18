@@ -205,26 +205,42 @@ final class MyPeripheralManager extends PlatformPeripheralManager
     GATTCharacteristic characteristic, {
     required Uint8List value,
   }) async {
+    while (!await tryNotifyCharacteristic(central, characteristic, value: value)) {
+      if (!await canSendNotifications()) {
+        break;
+      }
+    }
+  }
+
+  @override
+  Future<bool> tryNotifyCharacteristic(
+    Central central,
+    GATTCharacteristic characteristic, {
+    required Uint8List value,
+  }) async {
     final hashCodeArgs = characteristic.hashCode;
     final valueArgs = value;
     final uuidArgs = central.uuid.toArgs();
     final uuidsArgs = [uuidArgs];
-    while (true) {
-      logger.info('updateValue: $hashCodeArgs - $valueArgs, $uuidsArgs');
-      final updated = await _api.updateValue(
-        hashCodeArgs,
-        valueArgs,
-        uuidsArgs,
-      );
-      if (updated) {
-        break;
-      }
-      if (isReadyDeliveredEarly) {
-          isReadyDeliveredEarly = false;
-      } else {
-          await _isReady.first;
-      }
+    logger.info('updateValue: $hashCodeArgs - $valueArgs, $uuidsArgs');
+    return _api.updateValue(
+      hashCodeArgs,
+      valueArgs,
+      uuidsArgs,
+    );
+  }
+
+  @override
+  Future<bool> canSendNotifications() async {
+    if (isReadyDeliveredEarly) {
+      logger.info("fast lane!");
+      isReadyDeliveredEarly = false;
+      return true;
     }
+
+    await _isReady.first;
+    // TODO: Allow breaking out of this on disconnect
+    return true;
   }
 
   @override
