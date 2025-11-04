@@ -54,4 +54,8 @@ class MyPeripheralDelegate: NSObject, CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
         mCentralManager.didWriteDescriptorValue(peripheral: peripheral, descriptor: descriptor, error: error)
     }
+    
+    func peripheralIsReady(toSendWriteWithoutResponse peripheral: CBPeripheral) {
+        mCentralManager.peripheralIsReadyToSendWithoutResponse(peripheral: peripheral)
+    }
 }

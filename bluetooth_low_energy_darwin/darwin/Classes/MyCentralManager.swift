@@ -37,6 +37,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
     private var mDiscoverDescriptorsCompletions: [String: [Int64: (Result<[MyGATTDescriptorArgs], Error>) -> Void]]
     private var mReadCharacteristicCompletions: [String: [Int64: (Result<FlutterStandardTypedData, Error>) -> Void]]
     private var mWriteCharacteristicCompletions: [String: [Int64: (Result<Void, Error>) -> Void]]
+    private var mWriteCharacteristicWithoutResponseCompletion: [String: (Result<Void, Error>) -> Void]
     private var mSetCharacteristicNotifyStateCompletions: [String: [Int64: (Result<Void, Error>) -> Void]]
     private var mReadDescriptorCompletions: [String: [Int64: (Result<FlutterStandardTypedData, Error>) -> Void]]
     private var mWriteDescriptorCompletions: [String: [Int64: (Result<Void, Error>) -> Void]]
@@ -58,6 +59,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
         mDiscoverDescriptorsCompletions = [:]
         mReadCharacteristicCompletions = [:]
         mWriteCharacteristicCompletions = [:]
+        mWriteCharacteristicWithoutResponseCompletion = [:]
         mSetCharacteristicNotifyStateCompletions = [:]
         mReadDescriptorCompletions = [:]
         mWriteDescriptorCompletions = [:]
@@ -88,6 +90,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
         mDiscoverDescriptorsCompletions.removeAll()
         mReadCharacteristicCompletions.removeAll()
         mWriteCharacteristicCompletions.removeAll()
+        mWriteCharacteristicWithoutResponseCompletion.removeAll()
         mSetCharacteristicNotifyStateCompletions.removeAll()
         mReadDescriptorCompletions.removeAll()
         mWriteDescriptorCompletions.removeAll()
@@ -244,11 +247,17 @@ class MyCentralManager: MyCentralManagerHostAPI {
             let characteristic = try retrieveCharacteristic(uuidArgs: uuidArgs, hashCodeArgs: hashCodeArgs)
             let data = valueArgs.data
             let type = typeArgs.toWriteType()
+            if type == .withoutResponse && !peripheral.canSendWriteWithoutResponse {
+                completion(.failure(error))
+                return
+            }
             peripheral.writeValue(data, for: characteristic, type: type)
             if type == .withResponse {
                 mWriteCharacteristicCompletions[uuidArgs, default: [:]][hashCodeArgs] = completion
             } else {
-                completion(.success(()))
+                // TODO: if mWriteCharacteristicWithoutResponseCompletion already has a key
+                // for uuidArgs, we would overwrite the previous completion; handle that...
+                mWriteCharacteristicWithoutResponseCompletion[uuidArgs] = completion
             }
         } catch {
             completion(.failure(error))
@@ -372,6 +381,11 @@ class MyCentralManager: MyCentralManagerHostAPI {
             for completion in completions {
                 completion(.failure(errorNotNil))
             }
+        }
+        let writeCharacteristicWithoutResponseCompletion = self.mWriteCharacteristicWithoutResponseCompletion.removeValue(forKey: uuidArgs)
+        if writeCharacteristicWithoutResponseCompletion != nil {
+            let completion = writeCharacteristicWithoutResponseCompletion!.values
+            completion(.failure(errorNotNil))
         }
         let notifyCharacteristicCompletions = self.mSetCharacteristicNotifyStateCompletions.removeValue(forKey: uuidArgs)
         if notifyCharacteristicCompletions != nil {
@@ -582,6 +596,15 @@ class MyCentralManager: MyCentralManagerHostAPI {
         } else {
             completion(.failure(error!))
         }
+    }
+    
+    func peripheralIsReadyToSendWithoutResponse(peripheral: CBPeripheral) {
+        print("peripheralIsReadyToSendWithoutResponse: \(peripheral)")
+        let uuidArgs = peripheral.identifier.toArgs()
+        guard let completion = mWriteCharacteristicWithoutResponseCompletion[uuidArgs]?.removeValue(forKey: hashCodeArgs) else {
+            return
+        }
+        completion(.success(()))
     }
     
     private func retrievePeripheral(uuidArgs: String) throws -> CBPeripheral {
