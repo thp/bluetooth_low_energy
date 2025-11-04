@@ -248,7 +248,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
             let data = valueArgs.data
             let type = typeArgs.toWriteType()
             if type == .withoutResponse && !peripheral.canSendWriteWithoutResponse {
-                completion(.failure(error))
+                completion(.failure(MyError.unknown))
                 return
             }
             peripheral.writeValue(data, for: characteristic, type: type)
@@ -384,7 +384,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
         }
         let writeCharacteristicWithoutResponseCompletion = self.mWriteCharacteristicWithoutResponseCompletion.removeValue(forKey: uuidArgs)
         if writeCharacteristicWithoutResponseCompletion != nil {
-            let completion = writeCharacteristicWithoutResponseCompletion!.values
+            let completion = writeCharacteristicWithoutResponseCompletion!
             completion(.failure(errorNotNil))
         }
         let notifyCharacteristicCompletions = self.mSetCharacteristicNotifyStateCompletions.removeValue(forKey: uuidArgs)
@@ -601,7 +601,7 @@ class MyCentralManager: MyCentralManagerHostAPI {
     func peripheralIsReadyToSendWithoutResponse(peripheral: CBPeripheral) {
         print("peripheralIsReadyToSendWithoutResponse: \(peripheral)")
         let uuidArgs = peripheral.identifier.toArgs()
-        guard let completion = mWriteCharacteristicWithoutResponseCompletion[uuidArgs]?.removeValue(forKey: hashCodeArgs) else {
+        guard let completion = mWriteCharacteristicWithoutResponseCompletion.removeValue(forKey: uuidArgs) else {
             return
         }
         completion(.success(()))
